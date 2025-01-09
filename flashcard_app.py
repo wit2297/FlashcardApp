@@ -1,4 +1,4 @@
-import tkinter as tk
+import streamlit as st
 import random
 
 # Flashcard data
@@ -15,64 +15,55 @@ flashcards = {
     "こ": "ko",
 }
 
-class FlashcardApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Flashcard Quiz")
+# Initialize session state for current card, choices, and feedback
+if "current_card" not in st.session_state:
+    st.session_state.current_card = None
+if "choices" not in st.session_state:
+    st.session_state.choices = []
+if "feedback" not in st.session_state:
+    st.session_state.feedback = ""
 
-        self.flashcards = list(flashcards.items())
-        self.current_card = None
+# Function to pick a new card and generate choices
+def new_flashcard():
+    st.session_state.current_card = random.choice(list(flashcards.items()))
+    correct_answer = st.session_state.current_card[1]
+    
+    # Generate 5 random incorrect options
+    all_values = list(flashcards.values())
+    all_values.remove(correct_answer)
+    incorrect_options = random.sample(all_values, 5)
+    
+    # Combine correct answer with incorrect options and shuffle
+    st.session_state.choices = incorrect_options + [correct_answer]
+    random.shuffle(st.session_state.choices)
+    st.session_state.feedback = ""
 
-        self.question_label = tk.Label(root, text="", font=("Arial", 24))
-        self.question_label.pack(pady=20)
+# Function to check the selected answer
+def check_answer(selected_option):
+    if selected_option == st.session_state.current_card[1]:
+        st.session_state.feedback = "✅ Correct!"
+    else:
+        st.session_state.feedback = "❌ Incorrect, try again!"
 
-        self.buttons_frame = tk.Frame(root)
-        self.buttons_frame.pack(pady=10)
+# Main app layout
+st.title("Flashcard Quiz")
 
-        self.buttons = []
-        for i in range(6):
-            button = tk.Button(self.buttons_frame, text="", font=("Arial", 16), width=10, command=lambda b=i: self.check_answer(b))
-            button.grid(row=i // 3, column=i % 3, padx=5, pady=5)
-            self.buttons.append(button)
+# Display current flashcard
+if st.session_state.current_card is None:
+    new_flashcard()
 
-        self.result_label = tk.Label(root, text="", font=("Arial", 16))
-        self.result_label.pack(pady=10)
+st.subheader(f"What is the pronunciation of: {st.session_state.current_card[0]}")
 
-        self.next_button = tk.Button(root, text="Next", font=("Arial", 16), command=self.next_card)
-        self.next_button.pack(pady=10)
+# Display answer choices as buttons
+for choice in st.session_state.choices:
+    if st.button(choice):
+        check_answer(choice)
 
-        self.next_card()
+# Display feedback
+if st.session_state.feedback:
+    st.write(st.session_state.feedback)
 
-    def next_card(self):
-        self.result_label.config(text="")
-        self.current_card = random.choice(self.flashcards)
-        self.question_label.config(text=self.current_card[0])
-
-        # Shuffle options and add the correct answer
-        options = [self.current_card[1]]
-        while len(options) < 6:
-            option = random.choice(list(flashcards.values()))
-            if option not in options:
-                options.append(option)
-
-        random.shuffle(options)
-
-        # Update button texts
-        for i, option in enumerate(options):
-            self.buttons[i].config(text=option, state=tk.NORMAL)
-
-        self.correct_answer = self.current_card[1]
-
-    def check_answer(self, button_index):
-        selected_answer = self.buttons[button_index].cget("text")
-        if selected_answer == self.correct_answer:
-            self.result_label.config(text="Correct!", fg="green")
-            for button in self.buttons:
-                button.config(state=tk.DISABLED)
-        else:
-            self.result_label.config(text="Incorrect, try again!", fg="red")
-
-# Create the app
-root = tk.Tk()
-app = FlashcardApp(root)
-root.mainloop()
+# Next button to move to the next flashcard
+if st.session_state.feedback == "✅ Correct!":
+    if st.button("Next Flashcard"):
+        new_flashcard()
